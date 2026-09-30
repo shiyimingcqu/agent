@@ -1,0 +1,17 @@
+# API Key 属于秘密，绝对不要提交。
+.env
+
+# Python 虚拟环境和运行缓存都可以重新生成，不需要提交。
+.venv/
+.venv2/
+__pycache__/
+*.py[cod]
+
+# 运行时产生的文件
+backend.log
+backend_err.log
+*.tar
+
+# 前端依赖和构建产物
+frontend/node_modules/
+frontend/dist/

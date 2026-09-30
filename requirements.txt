@@ -1,0 +1,21 @@
+# DeepSeek exposes an OpenAI-compatible API.
+openai>=1.0.0
+
+# Load the API key from a local .env file.
+python-dotenv>=1.0.0
+# LangChain version of the same agent (see agent_langchain.py).
+# Keep below 1.0 to use the classic create_tool_calling_agent + AgentExecutor API,
+# which matches the structure of agent.py one-to-one.
+langchain>=0.3,<1.0
+langchain-openai>=0.2,<1.0
+# Minimal web front-end (server.py + index.html).
+fastapi>=0.110
+uvicorn[standard]>=0.29
+# Required by FastAPI for file upload (multipart/form-data).
+python-multipart>=0.0.9
+
+# PostgreSQL driver + pgvector Python client (db.py + rag.py).
+psycopg[binary]>=3.2
+
+# HTTP client for calling Zhipu embedding API (rag.py).
+httpx>=0.27

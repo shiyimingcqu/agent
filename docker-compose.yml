@@ -1,0 +1,81 @@
+# ============================================================
+# docker-compose.yml —— 一键启动整个应用（数据库 + 后端 + 前端）
+# ============================================================
+#
+# 首次构建并启动：
+#     docker compose up -d --build
+#
+# 普通启动（镜像已构建好后）：
+#     docker compose up -d
+#
+# 停止：   docker compose down
+# 重置：   docker compose down -v      （-v 同时删数据库数据，慎用）
+#
+# 部署到 Linux 服务器时，先把 .env 复制到服务器上再执行上面的命令，
+# 服务器上的 .env 要写真实的 API Key 和强数据库密码。
+services:
+  # ---------- 数据库：PostgreSQL + pgvector ----------
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: pgvector-dev
+
+    environment:
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-123456}"   # 生产环境务必改用强密码
+      POSTGRES_DB: ai_agent
+
+    ports:
+      # 公网访问风险高：生产环境如果不需要在服务器外连数据库，就删掉这一行
+      - "5432:5432"
+
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+    restart: unless-stopped
+
+  # ---------- 后端：FastAPI ----------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+
+    environment:
+      # 从服务器上的 .env 注入密钥；消息模型和智谱 key 也一样
+      DEEPSEEK_API_KEY: "${DEEPSEEK_API_KEY:?请先在 .env 里配置 DEEPSEEK_API_KEY}"
+      DEEPSEEK_MODEL: "${DEEPSEEK_MODEL:-deepseek-flash}"
+      ZHIPU_API_KEY: "${ZHIPU_API_KEY:?请先在 .env 里配置 ZHIPU_API_KEY}"
+      ZHIPU_MODEL: "${ZHIPU_MODEL:-embedding-3}"
+      # 注意：容器之间用服务名互访，不能用 127.0.0.1（那是容器自己）
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: "${DB_PASSWORD:-123456}"
+      DB_NAME: ai_agent
+
+    # 后端不需要暴露到公网，前端（Nginx）通过 Docker 内部网络访问它。
+    # 不写 ports，只有 compose 内部的 web 服务能访问。
+    expose:
+      - "8000"
+
+    depends_on:
+      - db
+
+    restart: unless-stopped
+
+  # ---------- 前端：Nginx（静态文件 + 反向代理） ----------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+
+    ports:
+      # 服务器 80 端口 → Nginx。用户通过 http://服务器IP 访问
+      - "80:80"
+
+    depends_on:
+      - backend
+
+    restart: unless-stopped
+
+volumes:
+  pg-data:

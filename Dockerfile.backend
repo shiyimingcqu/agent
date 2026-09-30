@@ -1,0 +1,27 @@
+# ============================================================
+# Dockerfile.backend —— FastAPI 后端镜像
+# ============================================================
+# 构建：docker build -f Dockerfile.backend -t ai-agent-backend .
+# 说明：生产环境用 Gunicorn 多进程跑，比 uvicorn 单进程抗压。
+
+FROM python:3.11-slim
+
+# 工作目录。所有 COPY / CMD 都相对这个目录。
+WORKDIR /app
+
+# 1) 先只复制 requirements.txt 并安装依赖。
+#    因为依赖层几乎不变，而代码经常改，
+#    这样能利用 Docker 缓存：改代码时不用重新装依赖。
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 2) 复制后端代码和 Agent 代码。
+COPY server.py db.py rag.py agent_langchain.py ./
+
+# 容器内部服务的端口。注意：这只是"声明"，对外映射由 docker-compose 决定。
+EXPOSE 8000
+
+# 生产启动：--host 0.0.0.0 监听容器内所有网卡（Nginx 才能访问到），
+# 不用 --reload（生产环境不需要热重载）。
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 让页面在手机上也能按设备宽度正确缩放 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>最小 Agent - Vue 工程版</title>
+</head>
+<body>
+  <!--
+    这是 Vue 应用的“挂载点”。
+    现在它是个空 div，页面上什么都看不到；
+    main.js 里的 createApp(App).mount("#app") 会把 Vue 渲染出的界面塞进这里。
+    这正是单页应用(SPA)的特点：HTML 只是一个空壳，界面全靠 JS 渲染出来。
+  -->
+  <div id="app"></div>
+
+  <!--
+    Vite 的入口脚本。
+    type="module" 表示以 ES Module 方式加载，这样才能在 JS 里写 import。
+    src="/src/main.js" 里的 "/" 指向前端项目根目录（frontend/），
+    这是 Vite 约定的写法，开发时由 Vite 负责解析，并自动做热更新
+    （改完代码保存，浏览器立刻刷新，不用手动按 F5）。
+  -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
