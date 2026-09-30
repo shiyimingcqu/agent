@@ -16,7 +16,7 @@
 services:
   # ---------- 数据库：PostgreSQL + pgvector ----------
   db:
-    image: pgvector/pgvector:pg16
+    image: crpi-568m1ugk6htjsag2.cn-shanghai.personal.cr.aliyuncs.com/agent31232131/agent:pgvector-pg16
     container_name: pgvector-dev
 
     environment:

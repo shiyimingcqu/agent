@@ -4,7 +4,7 @@
 # 构建：docker build -f Dockerfile.backend -t ai-agent-backend .
 # 说明：生产环境用 Gunicorn 多进程跑，比 uvicorn 单进程抗压。
 
-FROM python:3.11-slim
+FROM crpi-568m1ugk6htjsag2.cn-shanghai.personal.cr.aliyuncs.com/agent31232131/agent:python-3.11-slim
 
 # 工作目录。所有 COPY / CMD 都相对这个目录。
 WORKDIR /app
