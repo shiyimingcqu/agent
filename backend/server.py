@@ -171,8 +171,8 @@ def chat(req: ChatRequest, user: dict = Depends(get_current_user)) -> dict:
     检索结果为空，Agent 也能正常回答。
     """
 
-    # 1) 先把用户的问题存起来
-    db.save_message("user", req.message)
+    # 1) 先把用户的问题存起来（记录归属到当前登录用户）
+    db.save_message(user["id"], "user", req.message)
 
     # 2) RAG 检索：从向量库里找最相关的知识块
     #    top_k=3 表示取最相似的 3 个块；太少可能漏信息，太多会撑爆 prompt
@@ -197,17 +197,17 @@ def chat(req: ChatRequest, user: dict = Depends(get_current_user)) -> dict:
     # 4) 调 Agent 拿回答（Agent 收到的是拼了知识的 prompt）
     answer = run_agent(prompt_with_knowledge)
 
-    # 5) 把 Agent 的回答也存进去
-    db.save_message("agent", answer)
+    # 5) 把 Agent 的回答也存进去（同样归属到当前用户）
+    db.save_message(user["id"], "agent", answer)
 
     return {"answer": answer}
 
 
 @app.get("/history")
 def history(limit: int = 20, user: dict = Depends(get_current_user)) -> dict:
-    """返回最近的对话记录，供前端显示历史。"""
+    """返回当前用户最近的对话记录，供前端显示历史。"""
 
-    return {"messages": db.get_history(limit)}
+    return {"messages": db.get_history(user["id"], limit)}
 
 
 @app.post("/documents/upload")

@@ -35,13 +35,7 @@ CREATE TABLE IF NOT EXISTS chunks (
 CREATE INDEX IF NOT EXISTS idx_chunks_embedding
   ON chunks USING hnsw (embedding vector_cosine_ops);
 
--- 对话记录表（沿用，但语法改成 PostgreSQL）
-CREATE TABLE IF NOT EXISTS chat_log (
-  id         BIGSERIAL PRIMARY KEY,
-  role       TEXT    NOT NULL,
-  content    TEXT    NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+
 -- 用户表：注册用
 -- password_hash 只存 Argon2 哈希，绝不存明文密码
 CREATE TABLE IF NOT EXISTS users (
@@ -58,4 +52,14 @@ CREATE TABLE IF NOT EXISTS sessions (
   user_id     BIGINT      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   expires_at  TIMESTAMPTZ NOT NULL,                 -- 过期时间
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- 对话记录表：每条消息归属到一个用户
+-- user_id 就是“数据隔离”的关键：查询时按它过滤，各看各的。
+-- 必须放在 users 表之后，因为外键要引用 users(id)。
+CREATE TABLE IF NOT EXISTS chat_log (
+  id         BIGSERIAL PRIMARY KEY,
+  user_id    BIGINT REFERENCES users(id) ON DELETE CASCADE,
+  role       TEXT    NOT NULL,
+  content    TEXT    NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
 );

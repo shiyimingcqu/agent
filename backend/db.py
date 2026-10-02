@@ -34,29 +34,33 @@ def get_conn() -> Connection:
     )
 
 
-def save_message(role: str, content: str) -> None:
-    """保存一条消息。role 取值 "user" 或 "agent"。"""
+def save_message(user_id: int, role: str, content: str) -> None:
+    """保存一条消息，并标记它属于哪个用户。role 取值 "user" 或 "agent"。"""
     conn = get_conn()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO chat_log (role, content) VALUES (%s, %s)",
-                (role, content),
+                "INSERT INTO chat_log (user_id, role, content) VALUES (%s, %s, %s)",
+                (user_id, role, content),
             )
         conn.commit()
     finally:
         conn.close()
 
 
-def get_history(limit: int = 20) -> list:
-    """取出最近 limit 条消息，按时间从早到晚返回。"""
+def get_history(user_id: int, limit: int = 20) -> list:
+    """取出某个用户最近的 limit 条消息，按时间从早到晚返回。
+
+    WHERE user_id = %s 就是“数据隔离”的关键：
+    只查当前登录用户自己的记录，看不到别人的。
+    """
     conn = get_conn()
     try:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT role, content, created_at "
-                "FROM chat_log ORDER BY id DESC LIMIT %s",
-                (limit,),
+                "FROM chat_log WHERE user_id = %s ORDER BY id DESC LIMIT %s",
+                (user_id, limit),
             )
             rows = cur.fetchall()
     finally:
