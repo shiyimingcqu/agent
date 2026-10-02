@@ -13,7 +13,7 @@
     浏览器把答案显示出来
 
 启动方式（请在项目根目录执行）：
-    python -m uvicorn server:app --reload
+    python -m uvicorn server:app --app-dir backend --reload
 """
 
 import hashlib

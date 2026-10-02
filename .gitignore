@@ -10,6 +10,10 @@ __pycache__/
 # 运行时产生的文件
 backend.log
 backend_err.log
+logs/*
+!logs/.gitkeep
+archives/*
+!archives/.gitkeep
 *.tar
 
 # 前端依赖和构建产物

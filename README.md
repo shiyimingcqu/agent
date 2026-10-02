@@ -1,118 +1,116 @@
-# 最小 DeepSeek Agent
+# AI Agent 全栈应用
 
-这是一个面向初学者的最小 Agent。它只有一个能力：在需要时调用本机 Python
-函数读取当前时间，然后根据真实结果回答用户。
+Vue 前端 + FastAPI 后端 + LangChain / DeepSeek Agent + PostgreSQL / pgvector。
+支持注册登录、聊天、历史记录、UTF-8 文本上传和 RAG 检索。
 
-## 它为什么算 Agent
-
-普通聊天程序通常只有一步：
+## 项目结构
 
 ```text
-用户问题 -> 大模型回答
+项目/
+├─ backend/                  # 后端源代码及 Python 依赖
+│  ├─ server.py              # FastAPI 接口入口
+│  ├─ agent_langchain.py     # DeepSeek Agent 与时间工具
+│  ├─ rag.py                 # 智谱 embedding、文档切块与检索
+│  ├─ db.py                  # 用户、会话及聊天记录读写
+│  └─ requirements.txt
+├─ frontend/                 # Vue / Vite 前端
+├─ database/
+│  └─ schema.sql             # 数据库初始化脚本
+├─ deploy/                   # Dockerfile 与 Nginx 配置
+├─ samples/                  # 可上传测试的示例文本
+├─ logs/                     # 本地运行日志（不提交 Git）
+├─ archives/                 # Docker 镜像归档（不提交 Git）
+├─ docker-compose.yml        # 数据库、后端、前端的编排入口
+├─ .env                      # 本地配置（不提交 Git）
+├─ .env.example              # 配置模板
+└─ README.md
 ```
 
-这个程序多了“自主选择工具并继续执行”的循环：
+`.venv`、`.venv2`、`node_modules`、`dist` 和 Python 缓存属于本地环境或生成文件。
+现有虚拟环境保留；下面的命令以 `.venv` 为例，也可使用已安装依赖的 `.venv2`。
 
-```text
-用户问题
-   ↓
-DeepSeek 判断是否需要工具
-   ↓ 需要
-Python 执行工具
-   ↓
-工具结果交回 DeepSeek
-   ↓
-DeepSeek 给出最终答案
-```
+## 配置
 
-关键点是：代码没有写死“用户问时间就调用函数”。是否调用工具由模型根据问题决定。
-
-## 1. 准备环境
-
-请先确认已安装 Python 3.10 或更高版本：
-
-```powershell
-python --version
-```
-
-在项目目录创建虚拟环境：
-
-```powershell
-python -m venv .venv
-```
-
-激活虚拟环境：
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-安装依赖：
-
-```powershell
-python -m pip install -r requirements.txt
-```
-
-## 2. 配置 DeepSeek API Key
-
-先复制配置模板：
+以下命令除前端启动外，都在项目根目录执行。
+首次配置时复制模板；已有 `.env` 时直接编辑，避免覆盖已有配置。
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-打开新生成的 `.env`，把占位文字替换成你自己的 DeepSeek API Key：
+填写 `DEEPSEEK_API_KEY`、`ZHIPU_API_KEY` 和数据库连接参数。
+后端按源文件位置读取项目根目录的 `.env`，外部环境变量优先。
 
-```dotenv
-DEEPSEEK_API_KEY=你的真实Key
-DEEPSEEK_MODEL=deepseek-flash
-```
+## 本地开发
 
-`.gitignore` 已经忽略 `.env`，可以防止你不小心把密钥提交到 Git。
+### 1. Python 环境
 
-## 3. 运行
+如果还没有虚拟环境，先创建：
 
 ```powershell
-python agent.py
+python -m venv .venv
 ```
 
-建议先测试这个问题：
+安装后端依赖：
 
-```text
-现在几点？
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r backend/requirements.txt
 ```
 
-你会看到类似输出：
+### 2. 数据库
 
-```text
-你：现在几点？
-[工具] get_current_time -> 2026-09-28T23:30:00+08:00
-Agent：现在是 2026 年 9 月 28 日 23:30（UTC+8）。
+```powershell
+docker compose up -d db
 ```
 
-再试一个不需要工具的问题，例如“用一句话解释变量”。这次通常不会出现 `[工具]`，
-因为模型可以直接回答。
+首次创建数据库时，Compose 会挂载 `database/schema.sql` 并自动初始化。
+已有数据卷不会重新执行初始化脚本；现有数据库的表结构变更需要另外处理。
 
-## 4. 阅读代码的推荐顺序
+### 3. 后端
 
-打开 `agent.py`，按这个顺序阅读：
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn server:app --app-dir backend --reload
+```
 
-1. `get_current_time`：真正干活的普通 Python 函数。
-2. `TOOLS`：把函数的能力介绍给大模型。
-3. `run_tool`：把模型要求调用的工具名映射到 Python 函数。
-4. `run_agent`：保存消息并反复执行“模型 -> 工具 -> 模型”的循环。
-5. 文件最下面的 `if __name__ == "__main__"`：接收终端输入并启动 Agent。
+接口文档：<http://127.0.0.1:8000/docs>。
+`--app-dir backend` 让 Python 能找到 `server.py` 及它引用的同目录模块。
 
-## 5. 适合你的下一个练习
+也可以单独运行终端 Agent：
 
-完全理解当前版本后，可以自己添加一个 `calculate` 工具。先写普通 Python 函数，
-再把它加入 `TOOLS`，最后在 `run_tool` 中增加分支。这三个改动正好对应：
-实现能力、向模型描述能力、允许程序执行能力。
+```powershell
+.\.venv\Scripts\python.exe backend/agent_langchain.py
+```
 
-## 安全提醒
+### 4. 前端
 
-- API 调用可能产生费用，请在 DeepSeek 平台设置合理的余额和用量限制。
-- 不要把 API Key 写入 `agent.py`、聊天截图或 Git 提交。
-- 真实项目中，执行文件、数据库、网络请求等工具前，需要校验参数并限制权限。
+在另一个终端执行：
 
-实现依据：[DeepSeek 官方 Tool Calls 文档](https://api-docs.deepseek.com/guides/tool_calls/)。
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+打开终端显示的地址，通常为 <http://localhost:5173>。
+Vite 将 API 请求代理到本机的 8000 端口。前端构建命令为 `npm run build`。
+可用 `samples/rag_test_雾灯计划.txt` 测试文本上传和知识检索。
+
+## Docker 启动整个应用
+
+在项目根目录执行：
+
+```powershell
+docker compose up -d --build
+```
+
+网页入口为 <http://localhost>。容器中的 Nginx 将 API 请求转发给后端。
+两个 Dockerfile 都以项目根目录为构建上下文，无需切换到 `deploy/`。
+
+```powershell
+docker compose logs -f backend
+docker compose down
+```
+
+`docker compose down` 保留数据库数据卷。不要为了整理文件删除数据卷。
+`archives/pgvector-pg16.tar` 是保留的本地镜像归档，日常启动不需要复制进镜像。
+`logs/backend.log` 是整理前保留的日志；Docker 日志通过上面的 Compose 命令查看。

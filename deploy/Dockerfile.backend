@@ -1,18 +1,18 @@
 # ============================================================
 # Dockerfile.backend —— FastAPI 后端镜像
 # ============================================================
-# 构建：docker build -f Dockerfile.backend -t ai-agent-backend .
+# 在项目根目录构建：docker build -f deploy/Dockerfile.backend -t ai-agent-backend .
 # 说明：生产环境用 Gunicorn 多进程跑，比 uvicorn 单进程抗压。
 
 FROM crpi-568m1ugk6htjsag2.cn-shanghai.personal.cr.aliyuncs.com/agent31232131/agent:python-3.11-slim
 
 # 工作目录。所有 COPY / CMD 都相对这个目录。
-WORKDIR /app
+WORKDIR /app/backend
 
 # 1) 先只复制 requirements.txt 并安装依赖。
 #    因为依赖层几乎不变，而代码经常改，
 #    这样能利用 Docker 缓存：改代码时不用重新装依赖。
-COPY requirements.txt .
+COPY backend/requirements.txt .
 
 # 用国内镜像源 + 放宽超时。
 # 直连 PyPI 在国内常因超时而失败，报错会显示成
@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir --default-timeout=120 -r requirements.txt \
     -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 2) 复制后端代码和 Agent 代码。
-COPY server.py db.py rag.py agent_langchain.py ./
+COPY backend/ ./
 
 # 容器内部服务的端口。注意：这只是"声明"，对外映射由 docker-compose 决定。
 EXPOSE 8000

@@ -20,13 +20,14 @@
 """
 
 import os
+from pathlib import Path
 from typing import Any
 
 import httpx
 from dotenv import load_dotenv
 from psycopg import Connection, connect
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # ---------- 配置 ----------
 EMBEDDING_DIM = 1024                   # 智谱 embedding-3 的维度

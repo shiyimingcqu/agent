@@ -15,12 +15,13 @@
 """
 
 import os
+from pathlib import Path
 from datetime import datetime
 
 from dotenv import load_dotenv
 from psycopg import Connection, connect, errors
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 def get_conn() -> Connection:

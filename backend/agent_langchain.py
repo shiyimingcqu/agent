@@ -16,6 +16,7 @@ LangChain 把这三样都封装成了现成的组件，所以代码更短。
 """
 
 import os
+from pathlib import Path
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -25,8 +26,8 @@ from langchain_core.tools import tool
 from langchain_openai import ChatOpenAI
 
 
-# 从当前目录的 .env 文件读取配置，与 agent.py 完全一致。
-load_dotenv()
+# 固定读取项目根目录配置，不依赖启动时所在的目录；环境变量优先。
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 @tool
@@ -99,6 +100,6 @@ def run_agent(user_question: str) -> str:
 
 
 if __name__ == "__main__":
-    # 只有直接运行 `python agent_langchain.py` 时才执行下面两行。
+    # 只有直接运行 `python backend/agent_langchain.py` 时才执行下面两行。
     question = input("你：").strip()
     print("Agent：", run_agent(question))
