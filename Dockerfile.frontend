@@ -16,7 +16,9 @@ WORKDIR /app
 
 # 先复制 package.json 和锁文件并安装依赖，利用 Docker 缓存加速。
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+# 用国内 npm 镜像，避免直连 registry.npmjs.org 超时。
+# 先 config set 再 install，比只加 --registry 参数更可靠。
+RUN npm config set registry https://registry.npmmirror.com && npm ci
 
 # 再复制全部前端源码，执行打包。
 COPY frontend/ ./

@@ -14,7 +14,11 @@ WORKDIR /app
 #    这样能利用 Docker 缓存：改代码时不用重新装依赖。
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+# 用国内镜像源 + 放宽超时。
+# 直连 PyPI 在国内常因超时而失败，报错会显示成
+# "Could not find a version ... (from versions: none)"，很有误导性。
+RUN pip install --no-cache-dir --default-timeout=120 -r requirements.txt \
+    -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 2) 复制后端代码和 Agent 代码。
 COPY server.py db.py rag.py agent_langchain.py ./
