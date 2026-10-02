@@ -1,5 +1,5 @@
 -- ============================================================
-npm run dev-- schema.sql —— PostgreSQL + pgvector 的建库建表脚本
+-- schema.sql —— PostgreSQL + pgvector 的建库建表脚本
 -- ============================================================
 --
 -- 用途：
@@ -41,4 +41,21 @@ CREATE TABLE IF NOT EXISTS chat_log (
   role       TEXT    NOT NULL,
   content    TEXT    NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
+);
+-- 用户表：注册用
+-- password_hash 只存 Argon2 哈希，绝不存明文密码
+CREATE TABLE IF NOT EXISTS users (
+  id            BIGSERIAL PRIMARY KEY,
+  username      VARCHAR(50) NOT NULL UNIQUE,
+  password_hash TEXT        NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- 会话表：登录成功后签发 token，服务端只保存 token 的哈希
+-- 保存哈希而不是原始 token：数据库万一泄露，别人也无法拿哈希来冒充登录
+CREATE TABLE IF NOT EXISTS sessions (
+  id          BIGSERIAL PRIMARY KEY,
+  token_hash  TEXT        NOT NULL UNIQUE,          -- 唯一，防止重复
+  user_id     BIGINT      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at  TIMESTAMPTZ NOT NULL,                 -- 过期时间
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );

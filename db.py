@@ -15,9 +15,10 @@
 """
 
 import os
+from datetime import datetime
 
 from dotenv import load_dotenv
-from psycopg import Connection, connect
+from psycopg import Connection, connect, errors
 
 load_dotenv()
 
@@ -65,3 +66,107 @@ def get_history(limit: int = 20) -> list:
         {"role": r[0], "text": r[1], "created_at": r[2].isoformat()}
         for r in reversed(rows)
     ]
+
+def create_user(username: str, password_hash: str) -> dict:
+    """插入一个新用户，返回 {"id": ..., "username": ...}。
+
+    注意：这里传入的是 password_hash（已加密），不是明文密码。
+    用户名重复时不靠"先查询有没有"，而是直接插入并捕获数据库的
+    唯一约束错误，这样在并发下也不会插入重复用户。
+    """
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            # 参数化 SQL：%s 占位，由驱动安全转义，避免 SQL 注入
+            cur.execute(
+                "INSERT INTO users (username, password_hash) "
+                "VALUES (%s, %s) RETURNING id, username",
+                (username, password_hash),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    except errors.UniqueViolation:
+        # 唯一约束冲突：说明用户名已被占用
+        conn.rollback()
+        raise ValueError("用户名已存在")
+    finally:
+        conn.close()
+
+    return {"id": row[0], "username": row[1]}
+
+def get_user_by_username(username: str) -> dict | None:
+    """按用户名查用户，返回 {"id", "username", "password_hash"}。
+
+    找不到时返回 None，由上层决定返回什么错误。
+    """
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, username, password_hash FROM users WHERE username = %s",
+                (username,),
+            )
+            row = cur.fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        return None
+    return {"id": row[0], "username": row[1], "password_hash": row[2]}
+
+
+def create_session(token_hash: str, user_id: int, expires_at: datetime) -> None:
+    """保存一条登录会话。注意传进来的是 token 的哈希，不是原始 token。"""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO sessions (token_hash, user_id, expires_at) "
+                "VALUES (%s, %s, %s)",
+                (token_hash, user_id, expires_at),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_user_by_token(token_hash: str) -> dict | None:
+    """用 token 哈希查当前登录用户；token 不存在或已过期都返回 None。"""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            # expires_at > now() 表示还没过期；过期的会话会被视为无效
+            cur.execute(
+                "SELECT u.id, u.username FROM sessions s "
+                "JOIN users u ON u.id = s.user_id "
+                "WHERE s.token_hash = %s AND s.expires_at > now()",
+                (token_hash,),
+            )
+            row = cur.fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        return None
+    return {"id": row[0], "username": row[1]}
+
+def delete_session(token_hash: str) -> None:
+    """删除一条会话记录（登出时用）。"""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM sessions WHERE token_hash = %s", (token_hash,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def delete_expired_sessions() -> None:
+    """清理所有已过期的会话，避免 sessions 表无限增长。"""
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM sessions WHERE expires_at <= now()")
+        conn.commit()
+    finally:
+        conn.close()

@@ -19,3 +19,5 @@ psycopg[binary]>=3.2
 
 # HTTP client for calling Zhipu embedding API (rag.py).
 httpx>=0.27
+# Password hashing for user registration (Argon2, recommended by FastAPI docs).
+pwdlib[argon2]>=0.2

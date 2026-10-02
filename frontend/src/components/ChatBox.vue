@@ -9,6 +9,11 @@
 // ref：创建响应式变量；onMounted：组件挂载完成后执行一次的“生命周期钩子”。
 import { ref, onMounted } from "vue";
 
+// defineEmits：声明本组件会对“父组件”发出 "unauthorized" 事件。
+// 当后端返回 401（登录已过期）时，我们就发这个事件，
+// 让父组件 App 收到后把我们切回登录页。
+const emit = defineEmits(["unauthorized"]);
+
 // ---------- 三个响应式状态 ----------
 // 小提醒：在 <script> 里读写要用 .value；在 <template> 里 Vue 会自动帮你取值。
 
@@ -22,9 +27,16 @@ const uploading = ref(false); // 是否正在上传文件（按钮会显示“�
 // 这正是我们想要的时机：页面一打开，就把数据库里的历史记录显示出来。
 onMounted(async () => {
   try {
-    // 请求后端新增的 /history 接口（同样由 vite.config.js 的 proxy 转发）
+    // 请求后端的 /history 接口（同样由 vite.config.js 的 proxy 转发）
     const resp = await fetch("/history");
-    const data = await resp.json();  // 形如 {"messages": [{role, content, created_at}, ...]}
+
+    // 401 = 没登录或登录已过期，通知父组件切回登录页
+    if (resp.status === 401) {
+      emit("unauthorized");
+      return;
+    }
+
+    const data = await resp.json();  // 形如 {"messages": [{role, text, created_at}, ...]}
 
     // 数据库字段是 content，界面用的是 text，这里做一次转换
     logs.value = data.messages.map((m) => ({ role: m.role, text: m.text }));
@@ -111,6 +123,12 @@ async function ask() {
       headers: { "Content-Type": "application/json" }, // 声明请求体是 JSON
       body: JSON.stringify({ message }),               // 把对象转成 JSON 字符串发送
     });
+
+    // 401 = 登录已过期，通知父组件切回登录页
+    if (resp.status === 401) {
+      emit("unauthorized");
+      return;
+    }
 
     // 5) 解析后端返回的 JSON，形如 {"answer": "..."}
     const data = await resp.json();
